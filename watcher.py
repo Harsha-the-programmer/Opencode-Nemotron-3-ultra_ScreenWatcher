@@ -132,6 +132,10 @@ while True:
 
         if event.event == RESOURCE_EXHAUSTED:
 
+            # Already waiting to retry this failure.
+            if resource_wait_until is not None:
+                continue
+
             notify("Worker exhausted.")
 
             supervisor.worker_detected()

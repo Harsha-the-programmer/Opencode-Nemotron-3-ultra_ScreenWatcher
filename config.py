@@ -36,7 +36,7 @@ WINDOW_TITLE = "OpenCode"
 POLL_INTERVAL = 0.2
 
 # Wait after ResourceExhausted before retrying
-RESOURCE_EXHAUSTED_WAIT = 90
+RESOURCE_EXHAUSTED_WAIT = 150
 
 # Wait after "exiting loop"
 # If no request activity occurs during this period,
@@ -45,7 +45,7 @@ EXIT_LOOP_WAIT = 300      # 5 minutes
 
 # Maximum inactivity allowed for the active message.
 # If exceeded, assume the model is stuck thinking.
-STALL_WAIT = 900          # 5 minutes
+STALL_WAIT = 900          # 15 minutes
 
 # Prevent duplicate retries
 RETRY_COOLDOWN = 60
