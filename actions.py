@@ -89,9 +89,7 @@ def type_text(text):
     try:
 
         subprocess.run(
-            ["wtype"],
-            input=text,
-            text=True,
+            ["wtype", text],
             check=False
         )
 
