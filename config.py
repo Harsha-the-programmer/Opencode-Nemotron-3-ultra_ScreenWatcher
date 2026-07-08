@@ -27,8 +27,7 @@ LOG_FILE = (
 
 # Hyprland window title
 #WINDOW_TITLE = "OpenCode"
-WINDOW_TITLE = r"^OC \|"
-
+WINDOW_TITLE = "^(OC.*)$"
 # ==========================================================
 # Timers (seconds)
 # ==========================================================
