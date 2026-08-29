@@ -80,7 +80,11 @@ class LogMonitor:
 
                 return None
 
-        if RESOURCE_KEYWORD in line:
+        if (
+            RESOURCE_KEYWORD in line
+            or
+            "Service temporarily overloaded" in line
+        ):
 
             return LogEvent(
                 RESOURCE_EXHAUSTED,

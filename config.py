@@ -122,6 +122,8 @@ LOOP = "LOOP"
 
 RESOURCE_KEYWORD = "ResourceExhausted"
 
+OVERLOADED_KEYWORD = 'error.error="Service temporarily overloaded"'
+
 EXIT_LOOP_KEYWORD = 'message="exiting loop"'
 
 PROCESS_KEYWORD = "message=process"
