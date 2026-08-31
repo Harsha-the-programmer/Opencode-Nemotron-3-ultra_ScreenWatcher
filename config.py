@@ -45,7 +45,10 @@ EXIT_LOOP_WAIT = 300      # 5 minutes
 
 # Maximum inactivity allowed for the active message.
 # If exceeded, assume the model is stuck thinking.
-STALL_WAIT = 900          # 15 minutes
+#STALL_WAIT = 900          # 15 minutes
+THINKING_TIMEOUT = 300       # 5 minutes
+THINKING_VERIFY_WAIT = 120   # 2 minutes
+THINKING_HARD_TIMEOUT = 480  # 8 minutes
 
 # Prevent duplicate retries
 RETRY_COOLDOWN = 60

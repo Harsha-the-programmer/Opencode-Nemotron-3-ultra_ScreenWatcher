@@ -9,7 +9,7 @@ import time
 from config import (
     RESOURCE_EXHAUSTED_WAIT,
     EXIT_LOOP_WAIT,
-    STALL_WAIT,
+    #STALL_WAIT,
     RESOURCE_PROMPT,
     STALL_PROMPT,
     RESOURCE_EXHAUSTED,
@@ -19,6 +19,9 @@ from config import (
     PROCESS_ABORTED,
     EXIT_LOOP,
     LOOP,
+    THINKING_TIMEOUT,
+    THINKING_VERIFY_WAIT,
+    THINKING_HARD_TIMEOUT,
 )
 
 from log_monitor import LogMonitor
@@ -49,7 +52,13 @@ resource_wait_until = None
 
 exit_wait_until = None
 
-stall_deadline = None
+#stall_deadline = None
+
+thinking_started_at = None
+thinking_long = False
+thinking_hard_timeout_at = None
+thinking_verifying = False
+thinking_verify_until = None
 
 
 # -------------------------------------------------------
@@ -80,6 +89,12 @@ while True:
 
         if event.event == PROCESS_STARTED:
 
+            thinking_started_at = None
+            thinking_long = False
+            thinking_hard_timeout_at = None
+            thinking_verifying = False
+            thinking_verify_until = None
+
             if supervisor.session is None:
 
                 supervisor.start_session(
@@ -87,10 +102,11 @@ while True:
                 )
 
             resource_wait_until = None
+            exit_wait_until = None
 
             supervisor.touch()
 
-            stall_deadline = now + STALL_WAIT
+#            stall_deadline = now + STALL_WAIT
 
             notify("PROCESS STARTED")
 
@@ -104,7 +120,7 @@ while True:
 
             supervisor.touch()
 
-            stall_deadline = now + STALL_WAIT
+            #stall_deadline = now + STALL_WAIT
 
             if supervisor.state == SupervisorState.WAITING_EXIT:
 
@@ -123,6 +139,14 @@ while True:
         if event.event == STREAM_STARTED:
 
             supervisor.touch()
+
+            thinking_started_at = now
+            thinking_long = False
+            thinking_hard_timeout_at = (
+                now + THINKING_HARD_TIMEOUT
+            )
+            thinking_verifying = False
+            thinking_verify_until = None
 
             continue
 
@@ -155,12 +179,39 @@ while True:
 
             notify("Exit loop.")
 
+            # If the model has been thinking for 5+ minutes,
+            # verify whether OpenCode actually continues.
+            if (
+                thinking_started_at is not None
+                and
+                thinking_long
+            ):
+
+                thinking_verifying = True
+
+                thinking_verify_until = (
+                    now + THINKING_VERIFY_WAIT
+                )
+
+                notify(
+                    "Long thinking ended. "
+                    "Starting 2-minute verification."
+                )
+
             supervisor.exit_detected()
 
-            exit_wait_until = (
-                now +
-                EXIT_LOOP_WAIT
-            )
+            if thinking_long:
+
+                # Delay normal completion handling while we verify
+                # whether OpenCode starts another process.
+                exit_wait_until = None
+
+            else:
+
+                exit_wait_until = (
+                    now +
+                    EXIT_LOOP_WAIT
+                )
 
             continue
 
@@ -176,7 +227,7 @@ while True:
 
             exit_wait_until = None
 
-            stall_deadline = None
+            #stall_deadline = None
 
             resource_wait_until = None
 
@@ -216,7 +267,7 @@ while True:
 
         resource_wait_until = None
 
-        stall_deadline = now + STALL_WAIT
+ #       stall_deadline = now + STALL_WAIT
 
     # -------------------------------------------------------
     # Completion Timer
@@ -242,40 +293,102 @@ while True:
 
         resource_wait_until = None
 
-        stall_deadline = None
+        #stall_deadline = None
 
     # -------------------------------------------------------
     # Thinking Timeout
     # -------------------------------------------------------
 
     if (
-
-        stall_deadline is not None
-
-        and
-
-        supervisor.state == SupervisorState.RUNNING
-
-        and
-
-        now >= stall_deadline
-
+        thinking_started_at is not None
     ):
 
-        notify("Thinking timeout detected.")
-
-        supervisor.stall_detected()
-
-        abort_and_continue(
-            STALL_PROMPT
+        thinking_elapsed = (
+            now - thinking_started_at
         )
 
-        # We have just sent a new prompt.
-        supervisor.touch()
+        # ---------------------------------------------------
+        # 5-minute threshold
+        # ---------------------------------------------------
 
-        supervisor.resume()
+        if (
+            not thinking_long
+            and
+            thinking_elapsed >= THINKING_TIMEOUT
+        ):
 
-        stall_deadline = now + STALL_WAIT
+            thinking_long = True
+
+            notify(
+                "Thinking exceeded 5 minutes."
+            )
+
+        # ---------------------------------------------------
+        # 8-minute hard timeout
+        # ---------------------------------------------------
+
+        if (
+            thinking_hard_timeout_at is not None
+            and
+            now >= thinking_hard_timeout_at
+            and
+            not thinking_verifying
+        ):
+
+            notify(
+                "Thinking exceeded 8 minutes. "
+                "Timeout confirmed."
+            )
+
+            supervisor.stall_detected()
+
+            supervisor.resume()
+
+            abort_and_continue(
+                STALL_PROMPT
+            )
+
+            supervisor.touch()
+
+            thinking_started_at = None
+            thinking_long = False
+            thinking_hard_timeout_at = None
+            thinking_verifying = False
+            thinking_verify_until = None
+            exit_wait_until = None
+
+        # ---------------------------------------------------
+        # 2-minute verification after EXIT_LOOP
+        # ---------------------------------------------------
+
+        elif (
+            thinking_verifying
+            and
+            thinking_verify_until is not None
+            and
+            now >= thinking_verify_until
+        ):
+
+            notify(
+                "No new process after EXIT_LOOP. "
+                "Thinking timeout confirmed."
+            )
+
+            supervisor.stall_detected()
+
+            abort_and_continue(
+                STALL_PROMPT
+            )
+
+            supervisor.touch()
+
+            supervisor.resume()
+
+            thinking_started_at = None
+            thinking_long = False
+            thinking_hard_timeout_at = None
+            thinking_verifying = False
+            thinking_verify_until = None
 
     # -------------------------------------------------------
 
