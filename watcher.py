@@ -290,10 +290,16 @@ while True:
         supervisor.reset_session()
 
         exit_wait_until = None
-
         resource_wait_until = None
 
-        #stall_deadline = None
+        # Reset all thinking timeout state
+        thinking_started_at = None
+        thinking_long = False
+        thinking_hard_timeout_at = None
+        thinking_verifying = False
+        thinking_verify_until = None
+
+        continue
 
     # -------------------------------------------------------
     # Thinking Timeout
